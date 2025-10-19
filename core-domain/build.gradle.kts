@@ -16,4 +16,6 @@ android {
 }
 dependencies {
     implementation(platform(libs.kotlin.bom))
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    api(libs.kotlinx.coroutines.core)
 }

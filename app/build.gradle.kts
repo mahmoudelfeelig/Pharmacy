@@ -33,6 +33,8 @@ dependencies {
     implementation(project(":feature-map"))
     implementation(project(":core-domain"))
     implementation(project(":core-data"))
+    implementation(project(":core-ui"))
+
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))

@@ -4,12 +4,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.*
 import com.example.pharmacy.core.data.FirebaseAuthRepository
-import com.example.pharmacy.feature.auth.LoginScreen
-import com.example.pharmacy.feature.auth.RegisterScreen
-import com.example.pharmacy.feature.home.HomeScreen
+import com.example.feature_auth.LoginScreen
+import com.example.feature_auth.RegisterScreen
+import com.example.feature_home.HomeScreen
 import com.example.pharmacy.feature.map.MapScreen
-import com.example.pharmacy.feature.profile.ProfileScreen
-import com.example.pharmacy.ui.theme.PharmacyTheme
+import com.example.feature_profile.ProfileScreen
+import com.example.core_ui.theme.PharmacyTheme
 
 private object Routes {
     const val Login = "auth_login"
