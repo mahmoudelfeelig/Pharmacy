@@ -1,47 +1,36 @@
 package com.example.pharmacy
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.pharmacy.ui.theme.PharmacyTheme
+import androidx.navigation.compose.*
+import com.example.pharmacy.feature.auth.LoginScreen
+import com.example.pharmacy.feature.auth.RegisterScreen
+import com.example.pharmacy.feature.home.HomeScreen
+import com.example.pharmacy.feature.profile.ProfileScreen
+import com.example.pharmacy.feature.map.MapScreen
+import com.example.pharmacy.core.data.FirebaseAuthRepository
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+class MainActivity: ComponentActivity() {
+    override fun onCreate(b: Bundle?) {
+        super.onCreate(b)
+        val auth = FirebaseAuthRepository()
         setContent {
-            PharmacyTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            val nav = rememberNavController()
+            val start = if (auth.currentUserId()!=null) "home" else "auth/login"
+            NavHost(nav, startDestination = start) {
+                composable("auth/login"){ LoginScreen(
+                    onRegister = { nav.navigate("auth/register") },
+                    onLoggedIn = { nav.navigate("home"){ popUpTo("auth/login"){inclusive=true} } })
                 }
+                composable("auth/register"){ RegisterScreen(onDone = { nav.popBackStack() }) }
+                composable("home"){ HomeScreen(
+                    onProfile = { nav.navigate("profile") },
+                    onMap = { nav.navigate("map") },
+                    onLogout = { auth.signOut(); nav.navigate("auth/login"){ popUpTo(0) } })
+                }
+                composable("profile"){ ProfileScreen(onBack = { nav.popBackStack() }) }
+                composable("map"){ MapScreen(onBack = { nav.popBackStack() }) }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    PharmacyTheme {
-        Greeting("Android")
     }
 }
