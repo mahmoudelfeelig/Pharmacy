@@ -12,7 +12,8 @@ android {
 }
 dependencies {
     implementation("androidx.compose.ui:ui:1.7.3")
-    implementation("androidx.compose.material3:material3:1.3.0")
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    implementation("androidx.compose.material3:material3")
 }
 kotlin { jvmToolchain(17) }

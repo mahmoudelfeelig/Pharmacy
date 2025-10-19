@@ -3,33 +3,59 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.*
+import com.example.pharmacy.core.data.FirebaseAuthRepository
 import com.example.pharmacy.feature.auth.LoginScreen
 import com.example.pharmacy.feature.auth.RegisterScreen
 import com.example.pharmacy.feature.home.HomeScreen
-import com.example.pharmacy.feature.profile.ProfileScreen
 import com.example.pharmacy.feature.map.MapScreen
-import com.example.pharmacy.core.data.FirebaseAuthRepository
+import com.example.pharmacy.feature.profile.ProfileScreen
+import com.example.pharmacy.ui.theme.PharmacyTheme
 
-class MainActivity: ComponentActivity() {
+private object Routes {
+    const val Login = "auth_login"
+    const val Register = "auth_register"
+    const val Home = "home"
+    const val Profile = "profile"
+    const val Map = "map"
+}
+
+class MainActivity : ComponentActivity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         val auth = FirebaseAuthRepository()
         setContent {
-            val nav = rememberNavController()
-            val start = if (auth.currentUserId()!=null) "home" else "auth/login"
-            NavHost(nav, startDestination = start) {
-                composable("auth/login"){ LoginScreen(
-                    onRegister = { nav.navigate("auth/register") },
-                    onLoggedIn = { nav.navigate("home"){ popUpTo("auth/login"){inclusive=true} } })
+            PharmacyTheme {
+                val nav = rememberNavController()
+                val start = if (auth.currentUserId() != null) Routes.Home else Routes.Login
+                NavHost(nav, startDestination = start) {
+                    composable(Routes.Login) {
+                        LoginScreen(
+                            onRegister = { nav.navigate(Routes.Register) },
+                            onLoggedIn = {
+                                nav.navigate(Routes.Home) {
+                                    popUpTo(Routes.Login) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
+                    }
+                    composable(Routes.Register) { RegisterScreen(onDone = { nav.popBackStack() }) }
+                    composable(Routes.Home) {
+                        HomeScreen(
+                            onProfile = { nav.navigate(Routes.Profile) },
+                            onMap = { nav.navigate(Routes.Map) },
+                            onLogout = {
+                                auth.signOut()
+                                nav.navigate(Routes.Login) {
+                                    popUpTo(Routes.Home) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
+                    }
+                    composable(Routes.Profile) { ProfileScreen(onBack = { nav.popBackStack() }) }
+                    composable(Routes.Map) { MapScreen(onBack = { nav.popBackStack() }) }
                 }
-                composable("auth/register"){ RegisterScreen(onDone = { nav.popBackStack() }) }
-                composable("home"){ HomeScreen(
-                    onProfile = { nav.navigate("profile") },
-                    onMap = { nav.navigate("map") },
-                    onLogout = { auth.signOut(); nav.navigate("auth/login"){ popUpTo(0) } })
-                }
-                composable("profile"){ ProfileScreen(onBack = { nav.popBackStack() }) }
-                composable("map"){ MapScreen(onBack = { nav.popBackStack() }) }
             }
         }
     }
