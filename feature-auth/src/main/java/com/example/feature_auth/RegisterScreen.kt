@@ -9,22 +9,35 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.core_data.FirestoreUserRepository
+import com.example.core_domain.UserProfile
 import com.example.pharmacy.core.data.FirebaseAuthRepository
 import com.example.core_ui.design.Spacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterScreen(onDone: ()->Unit) {
+fun RegisterScreen(onDone: (UserProfile)->Unit) {
     val auth = remember { FirebaseAuthRepository() }
+    val userRepo = remember { FirestoreUserRepository() }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("patient") }
+    var gender by remember { mutableStateOf("male") }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("Register") }) }) { pad ->
         Column(Modifier.padding(pad).padding(Spacing.lg)) {
+            OutlinedTextField(
+                value = displayName, onValueChange = { displayName = it },
+                label = { Text("Full name") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(Spacing.md))
             OutlinedTextField(
                 value = email, onValueChange = { email = it },
                 label = { Text("Email") }, singleLine = true,
@@ -43,14 +56,38 @@ fun RegisterScreen(onDone: ()->Unit) {
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(Modifier.height(Spacing.md))
+            Text("Register as", style = MaterialTheme.typography.labelMedium)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                RoleOption("Patient", selected = role == "patient") { role = "patient" }
+                RoleOption("Pharmacist", selected = role == "pharmacist") { role = "pharmacist" }
+            }
+            Spacer(Modifier.height(Spacing.md))
+            Text("Gender", style = MaterialTheme.typography.labelMedium)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                GenderOption("Male", "male", gender) { gender = it }
+                GenderOption("Female", "female", gender) { gender = it }
+                GenderOption("Other", "other", gender) { gender = it }
+            }
             Spacer(Modifier.height(Spacing.lg))
             Button(
                 onClick = {
                     loading = true; err = null
                     scope.launch {
                         auth.register(email, pass)
-                            .onSuccess { onDone() }
-                            .onFailure { err = it.message }
+                            .onSuccess { uid ->
+                                val profile = UserProfile(
+                                    uid = uid,
+                                    email = email,
+                                    displayName = displayName.ifBlank { null },
+                                    role = role,
+                                    gender = gender
+                                )
+                                userRepo.upsert(profile)
+                                    .onSuccess { onDone(profile) }
+                                    .onFailure { err = it.message }
+                            }
+                            .onFailure { err = it.message ?: "Registration failed" }
                         loading = false
                     }
                 },
@@ -60,4 +97,24 @@ fun RegisterScreen(onDone: ()->Unit) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
+}
+
+@Composable
+private fun RoleOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onSelect,
+        label = { Text(label) }
+    )
+}
+
+@Composable
+private fun GenderOption(label: String, value: String, current: String, onSelect: (String) -> Unit) {
+    AssistChip(
+        onClick = { onSelect(value) },
+        label = { Text(label) },
+        leadingIcon = {
+            RadioButton(selected = current == value, onClick = { onSelect(value) })
+        }
+    )
 }

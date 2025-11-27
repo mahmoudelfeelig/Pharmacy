@@ -5,4 +5,7 @@ data class UserProfile(
     val displayName: String? = null,
     val extraNotes: String? = null,
     val avatarUrl: String? = null,
-    )
+    val role: String = "",
+    val gender: String = "",
+    val online: Boolean = false,
+)

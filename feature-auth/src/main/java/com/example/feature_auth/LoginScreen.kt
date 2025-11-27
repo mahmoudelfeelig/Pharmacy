@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(onRegister: ()->Unit, onLoggedIn: ()->Unit) {
+fun LoginScreen(onRegister: ()->Unit, onLoggedIn: (String)->Unit) {
     val auth = remember { FirebaseAuthRepository() }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -51,7 +51,7 @@ fun LoginScreen(onRegister: ()->Unit, onLoggedIn: ()->Unit) {
                     loading = true; err = null
                     scope.launch {
                         auth.signIn(email, pass)
-                            .onSuccess { onLoggedIn() }
+                            .onSuccess { onLoggedIn(it) }
                             .onFailure { err = it.message }
                         loading = false
                     }
