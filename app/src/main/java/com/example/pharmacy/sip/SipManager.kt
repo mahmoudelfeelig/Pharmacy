@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 
 /**
  * Lightweight SIP launcher: uses external SIP-capable apps (e.g., Linphone) via intent.
@@ -28,14 +29,51 @@ object SipManager {
 
     fun call(sipUri: String) {
         val ctx = appContext ?: return
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(sipUri)).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        fun launch(intent: Intent): Boolean {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val handler = intent.resolveActivity(ctx.packageManager)
+            if (handler != null) {
+                ctx.startActivity(intent)
+                return true
+            }
+            return false
         }
-        if (intent.resolveActivity(ctx.packageManager) != null) {
-            ctx.startActivity(intent)
-        } else {
-            Log.w("SipManager", "No SIP-capable app found to handle $sipUri")
+
+        val knownPackages = listOf(
+            "org.linphone",
+            "com.belledonnecommunications.linphone",
+            "com.belledonnecommunications.linphone.debug"
+        )
+        for (pkg in knownPackages) {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(sipUri)).setPackage(pkg)
+            if (launch(intent)) return
         }
+
+        val defaultViewIntent = Intent(Intent.ACTION_VIEW, Uri.parse(sipUri))
+        if (launch(defaultViewIntent)) return
+
+        // As a last resort launch the Linphone app normally so the user can dial manually
+        knownPackages.forEach { pkg ->
+            val launchIntent = ctx.packageManager.getLaunchIntentForPackage(pkg)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(launchIntent)
+                Toast.makeText(
+                    ctx,
+                    "Linphone opened—dial $sipUri manually if needed.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return
+            }
+        }
+
+        Log.w("SipManager", "No SIP-capable app found to handle $sipUri")
+        Toast.makeText(
+            ctx,
+            "Install/assign a SIP app such as Linphone to place calls",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     fun stop() {

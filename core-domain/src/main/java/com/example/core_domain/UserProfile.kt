@@ -8,4 +8,5 @@ data class UserProfile(
     val role: String = "",
     val gender: String = "",
     val online: Boolean = false,
+    val sipExtension: String = ""
 )

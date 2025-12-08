@@ -12,6 +12,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,8 +32,14 @@ fun PharmacistConsultationScreen(
     onBack: () -> Unit,
     userRepo: FirestoreUserRepository = FirestoreUserRepository()
 ) {
-    var online by remember { mutableStateOf(userProfile.online) }
+    var online by remember(userProfile.uid) { mutableStateOf(userProfile.online) }
     val scope = rememberCoroutineScope()
+
+    // If the profile updates from Firestore while this screen is open,
+    // keep the UI in sync.
+    LaunchedEffect(userProfile.online) {
+        online = userProfile.online
+    }
 
     Scaffold(
         topBar = {
@@ -43,7 +50,10 @@ fun PharmacistConsultationScreen(
         }
     ) { pad ->
         Column(
-            modifier = Modifier.padding(pad).padding(Spacing.lg).fillMaxWidth(),
+            modifier = Modifier
+                .padding(pad)
+                .padding(Spacing.lg)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Row(

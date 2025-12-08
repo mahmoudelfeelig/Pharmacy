@@ -25,6 +25,7 @@ class FirestoreUserRepository(
             role = d.getString("role") ?: "",
             gender = d.getString("gender") ?: "",
             online = d.getBoolean("online") ?: false,
+            sipExtension = d.getString("sipExtension") ?: ""
         )
     }
 
@@ -36,7 +37,8 @@ class FirestoreUserRepository(
             "extraNotes" to p.extraNotes,
             "role" to p.role,
             "gender" to p.gender,
-            "online" to p.online
+            "online" to p.online,
+            "sipExtension" to p.sipExtension
         )
         col().document(p.uid).set(data).await()
     }
@@ -58,7 +60,8 @@ class FirestoreUserRepository(
                         extraNotes = d.getString("extraNotes"),
                         role = d.getString("role") ?: "",
                         gender = d.getString("gender") ?: "",
-                        online = d.getBoolean("online") ?: false
+                        online = d.getBoolean("online") ?: false,
+                        sipExtension = d.getString("sipExtension") ?: ""
                     )
                 } ?: emptyList()
                 trySend(list)

@@ -1,5 +1,7 @@
 package com.example.pharmacy
+import android.content.ActivityNotFoundException
 import android.os.Bundle
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.activity.ComponentActivity
@@ -8,6 +10,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
 import com.example.pharmacy.core.data.FirebaseAuthRepository
 import com.example.core_data.FirestoreUserRepository
@@ -26,6 +29,7 @@ import com.example.feature_profile.ProfileScreen
 import com.example.core_ui.theme.PharmacyTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import com.example.pharmacy.sip.SipCallLauncher
 import com.example.pharmacy.sip.SipConfig
 import com.example.pharmacy.sip.SipManager
 
@@ -54,6 +58,7 @@ class MainActivity : ComponentActivity() {
             var currentUser by remember { mutableStateOf<UserProfile?>(null) }
             var loadingProfile by remember { mutableStateOf(true) }
             PharmacyTheme {
+                val composeContext = LocalContext.current
                 val nav = rememberNavController()
                 val scope = rememberCoroutineScope()
 
@@ -173,10 +178,18 @@ class MainActivity : ComponentActivity() {
                                 PatientConsultationScreen(
                                     userProfile = user,
                                     onBack = { nav.popBackStack() },
-                                    onCallPharmacist = { sipUser ->
-                                        val sipUri = "sip:$sipUser@${SipConfig.PBX_DOMAIN}"
-                                        SipManager.call(sipUri)
-                                    }
+                                    onCallPharmacist = { sipAddress ->
+                                        try {
+                                            SipCallLauncher.launchSipCall(composeContext, sipAddress)
+                                        } catch (_: ActivityNotFoundException) {
+                                            Toast.makeText(
+                                                composeContext,
+                                                "Install or enable a SIP app (e.g., Linphone) to place calls",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    },
+                                    sipDomainOrHost = SipConfig.PBX_DOMAIN
                                 )
                             }
                         }
