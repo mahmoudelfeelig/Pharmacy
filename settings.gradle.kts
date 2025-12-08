@@ -10,6 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Linphone SDK repository (required for SIP integration)
+        maven { url = uri("https://linphone.org/maven_repository/") }
     }
 }
 rootProject.name = "Pharmacy"

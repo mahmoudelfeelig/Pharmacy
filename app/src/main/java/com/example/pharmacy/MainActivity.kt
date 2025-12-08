@@ -26,6 +26,8 @@ import com.example.feature_profile.ProfileScreen
 import com.example.core_ui.theme.PharmacyTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import com.example.pharmacy.sip.SipConfig
+import com.example.pharmacy.sip.SipManager
 
 private object Routes {
     const val Login = "auth_login"
@@ -46,6 +48,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(b)
         val auth = FirebaseAuthRepository()
         setContent {
+            // Start Linphone core early; it registers once we have credentials
+            LaunchedEffect(Unit) { SipManager.start(applicationContext) }
             val userRepo = remember { FirestoreUserRepository() }
             var currentUser by remember { mutableStateOf<UserProfile?>(null) }
             var loadingProfile by remember { mutableStateOf(true) }
@@ -59,6 +63,7 @@ class MainActivity : ComponentActivity() {
                         userRepo.get(uid)
                             .onSuccess { currentUser = it ?: UserProfile(uid = uid, email = fallbackEmail) }
                             .onFailure { currentUser = UserProfile(uid = uid, email = fallbackEmail) }
+                        currentUser?.let { registerSipForUser(it) }
                     }
                     loadingProfile = false
                 }
@@ -91,6 +96,7 @@ class MainActivity : ComponentActivity() {
                                                 currentUser = profile ?: UserProfile(uid = uid, email = fallbackEmail)
                                             }
                                             .onFailure { currentUser = UserProfile(uid = uid, email = fallbackEmail) }
+                                        currentUser?.let { registerSipForUser(it) }
                                         nav.navigate(homeRouteFor(currentUser)) {
                                             popUpTo(Routes.Login) { inclusive = true }
                                             launchSingleTop = true
@@ -166,7 +172,11 @@ class MainActivity : ComponentActivity() {
                             currentUser?.let { user ->
                                 PatientConsultationScreen(
                                     userProfile = user,
-                                    onBack = { nav.popBackStack() }
+                                    onBack = { nav.popBackStack() },
+                                    onCallPharmacist = { sipUser ->
+                                        val sipUri = "sip:$sipUser@${SipConfig.PBX_DOMAIN}"
+                                        SipManager.call(sipUri)
+                                    }
                                 )
                             }
                         }
@@ -204,3 +214,8 @@ class MainActivity : ComponentActivity() {
 
 private fun homeRouteFor(user: UserProfile?) =
     if (user?.role == "pharmacist") Routes.PharmacistHome else Routes.PatientHome
+
+private fun registerSipForUser(user: UserProfile) {
+    val creds = SipConfig.credentialsFor(user.role, user.email, user.uid)
+    SipManager.register(creds.username, creds.domain, creds.password, SipConfig.DEFAULT_TRANSPORT)
+}
