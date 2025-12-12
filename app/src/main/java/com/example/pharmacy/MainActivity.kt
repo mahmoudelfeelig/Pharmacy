@@ -1,5 +1,5 @@
 package com.example.pharmacy
-import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -29,9 +29,15 @@ import com.example.feature_profile.ProfileScreen
 import com.example.core_ui.theme.PharmacyTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
-import com.example.pharmacy.sip.SipCallLauncher
 import com.example.pharmacy.sip.SipConfig
 import com.example.pharmacy.sip.SipManager
+import androidx.core.content.ContextCompat
+import org.linphone.core.tools.service.CoreService
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import com.example.pharmacy.ui.CallScreen
+import androidx.compose.foundation.layout.padding
+import kotlinx.coroutines.flow.collectLatest
 
 private object Routes {
     const val Login = "auth_login"
@@ -53,7 +59,15 @@ class MainActivity : ComponentActivity() {
         val auth = FirebaseAuthRepository()
         setContent {
             // Start Linphone core early; it registers once we have credentials
-            LaunchedEffect(Unit) { SipManager.start(applicationContext) }
+            LaunchedEffect(Unit) {
+                SipManager.start(applicationContext)
+                // Keep Linphone core alive; use startService to avoid foreground start timeout crashes
+                kotlin.runCatching {
+                    applicationContext.startService(
+                        Intent(applicationContext, CoreService::class.java)
+                    )
+                }
+            }
             val userRepo = remember { FirestoreUserRepository() }
             var currentUser by remember { mutableStateOf<UserProfile?>(null) }
             var loadingProfile by remember { mutableStateOf(true) }
@@ -61,6 +75,7 @@ class MainActivity : ComponentActivity() {
                 val composeContext = LocalContext.current
                 val nav = rememberNavController()
                 val scope = rememberCoroutineScope()
+                val callUiState by SipManager.callState.collectAsState()
 
                 LaunchedEffect(Unit) {
                     auth.currentUserId()?.let { uid ->
@@ -89,135 +104,145 @@ class MainActivity : ComponentActivity() {
                         CircularProgressIndicator()
                     }
                 } else {
-                    NavHost(nav, startDestination = Routes.Login) {
-                        composable(Routes.Login) {
-                            LoginScreen(
-                                onRegister = { nav.navigate(Routes.Register) },
-                                onLoggedIn = { uid ->
-                                    scope.launch {
-                                        val fallbackEmail = FirebaseAuth.getInstance().currentUser?.email.orEmpty()
-                                        userRepo.get(uid)
-                                            .onSuccess { profile ->
-                                                currentUser = profile ?: UserProfile(uid = uid, email = fallbackEmail)
+                    Box(Modifier.fillMaxSize()) {
+                        NavHost(nav, startDestination = Routes.Login) {
+                            composable(Routes.Login) {
+                                LoginScreen(
+                                    onRegister = { nav.navigate(Routes.Register) },
+                                    onLoggedIn = { uid ->
+                                        scope.launch {
+                                            val fallbackEmail = FirebaseAuth.getInstance().currentUser?.email.orEmpty()
+                                            userRepo.get(uid)
+                                                .onSuccess { profile ->
+                                                    currentUser = profile ?: UserProfile(uid = uid, email = fallbackEmail)
+                                                }
+                                                .onFailure { currentUser = UserProfile(uid = uid, email = fallbackEmail) }
+                                            currentUser?.let { registerSipForUser(it) }
+                                            nav.navigate(homeRouteFor(currentUser)) {
+                                                popUpTo(Routes.Login) { inclusive = true }
+                                                launchSingleTop = true
                                             }
-                                            .onFailure { currentUser = UserProfile(uid = uid, email = fallbackEmail) }
-                                        currentUser?.let { registerSipForUser(it) }
-                                        nav.navigate(homeRouteFor(currentUser)) {
-                                            popUpTo(Routes.Login) { inclusive = true }
-                                            launchSingleTop = true
                                         }
+                                    }
+                                )
+                            }
+                            composable(Routes.Register) {
+                                RegisterScreen { profile ->
+                                    currentUser = profile
+                                    nav.navigate(homeRouteFor(profile)) {
+                                        popUpTo(Routes.Login) { inclusive = true }
+                                        launchSingleTop = true
                                     }
                                 }
-                            )
-                        }
-                        composable(Routes.Register) {
-                            RegisterScreen { profile ->
-                                currentUser = profile
-                                nav.navigate(homeRouteFor(profile)) {
-                                    popUpTo(Routes.Login) { inclusive = true }
-                                    launchSingleTop = true
+                            }
+                            composable(Routes.PatientHome) {
+                                currentUser?.let { user ->
+                                    PatientHomeScreen(
+                                        profile = user,
+                                        onMedications = { nav.navigate(Routes.PatientMeds) },
+                                        onCart = { nav.navigate(Routes.PatientCart) },
+                                        onConsultation = { nav.navigate(Routes.PatientConsultation) },
+                                        onMap = { nav.navigate(Routes.Map) },
+                                        onProfile = { nav.navigate(Routes.Profile) },
+                                        onLogout = {
+                                            auth.signOut(); currentUser = null
+                                            nav.navigate(Routes.Login) {
+                                                popUpTo(0) { inclusive = true }
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                    )
                                 }
                             }
-                        }
-                        composable(Routes.PatientHome) {
-                            currentUser?.let { user ->
-                                PatientHomeScreen(
-                                    profile = user,
-                                    onMedications = { nav.navigate(Routes.PatientMeds) },
-                                    onCart = { nav.navigate(Routes.PatientCart) },
-                                    onConsultation = { nav.navigate(Routes.PatientConsultation) },
-                                    onMap = { nav.navigate(Routes.Map) },
-                                    onProfile = { nav.navigate(Routes.Profile) },
-                                    onLogout = {
-                                        auth.signOut(); currentUser = null
-                                        nav.navigate(Routes.Login) {
-                                            popUpTo(0) { inclusive = true }
-                                            launchSingleTop = true
+                            composable(Routes.PharmacistHome) {
+                                currentUser?.let { user ->
+                                    PharmacistHomeScreen(
+                                        profile = user,
+                                        onManageMeds = { nav.navigate(Routes.PharmacistMeds) },
+                                        onConsultation = { nav.navigate(Routes.PharmacistConsultation) },
+                                        onMap = { nav.navigate(Routes.Map) },
+                                        onProfile = { nav.navigate(Routes.Profile) },
+                                        onLogout = {
+                                            auth.signOut(); currentUser = null
+                                            nav.navigate(Routes.Login) {
+                                                popUpTo(0) { inclusive = true }
+                                                launchSingleTop = true
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
-                        }
-                        composable(Routes.PharmacistHome) {
-                            currentUser?.let { user ->
-                                PharmacistHomeScreen(
-                                    profile = user,
-                                    onManageMeds = { nav.navigate(Routes.PharmacistMeds) },
-                                    onConsultation = { nav.navigate(Routes.PharmacistConsultation) },
-                                    onMap = { nav.navigate(Routes.Map) },
-                                    onProfile = { nav.navigate(Routes.Profile) },
-                                    onLogout = {
-                                        auth.signOut(); currentUser = null
-                                        nav.navigate(Routes.Login) {
-                                            popUpTo(0) { inclusive = true }
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                )
+                            composable(Routes.PatientMeds) {
+                                currentUser?.let { user ->
+                                    PatientMedicationsScreen(
+                                        userId = user.uid,
+                                        onCart = { nav.navigate(Routes.PatientCart) },
+                                        onBack = { nav.popBackStack() }
+                                    )
+                                }
                             }
-                        }
-                        composable(Routes.PatientMeds) {
-                            currentUser?.let { user ->
-                                PatientMedicationsScreen(
-                                    userId = user.uid,
-                                    onCart = { nav.navigate(Routes.PatientCart) },
-                                    onBack = { nav.popBackStack() }
-                                )
+                            composable(Routes.PatientCart) {
+                                currentUser?.let { user ->
+                                    PatientCartScreen(
+                                        userId = user.uid,
+                                        onBack = { nav.popBackStack() }
+                                    )
+                                }
                             }
-                        }
-                        composable(Routes.PatientCart) {
-                            currentUser?.let { user ->
-                                PatientCartScreen(
-                                    userId = user.uid,
-                                    onBack = { nav.popBackStack() }
-                                )
+                            composable(Routes.PatientConsultation) {
+                                currentUser?.let { user ->
+                                    PatientConsultationScreen(
+                                        userProfile = user,
+                                        onBack = { nav.popBackStack() },
+                                        onCallPharmacist = { sipAddress ->
+                                            val ok = SipManager.call(sipAddress)
+                                            if (!ok) {
+                                                Toast.makeText(
+                                                    composeContext,
+                                                    "SIP is not ready yet. Try again in a moment.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        },
+                                        sipDomainOrHost = SipConfig.PBX_DOMAIN
+                                    )
+                                }
                             }
-                        }
-                        composable(Routes.PatientConsultation) {
-                            currentUser?.let { user ->
-                                PatientConsultationScreen(
-                                    userProfile = user,
+                            composable(Routes.PharmacistMeds) {
+                                currentUser?.let { user ->
+                                    PharmacistMedicationsScreen(
+                                        onBack = { nav.popBackStack() }
+                                    )
+                                }
+                            }
+                            composable(Routes.PharmacistConsultation) {
+                                currentUser?.let { user ->
+                                    PharmacistConsultationScreen(
+                                        userProfile = user,
+                                        onAvailabilityChanged = { isOnline ->
+                                            currentUser = user.copy(online = isOnline)
+                                        },
+                                        onBack = { nav.popBackStack() }
+                                    )
+                                }
+                            }
+                            composable(Routes.Profile) {
+                                ProfileScreen(
                                     onBack = { nav.popBackStack() },
-                                    onCallPharmacist = { sipAddress ->
-                                        try {
-                                            SipCallLauncher.launchSipCall(composeContext, sipAddress)
-                                        } catch (_: ActivityNotFoundException) {
-                                            Toast.makeText(
-                                                composeContext,
-                                                "Install or enable a SIP app (e.g., Linphone) to place calls",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    },
-                                    sipDomainOrHost = SipConfig.PBX_DOMAIN
+                                    providedProfile = currentUser
                                 )
                             }
+                            composable(Routes.Map) { MapScreen(onBack = { nav.popBackStack() }) }
                         }
-                        composable(Routes.PharmacistMeds) {
-                            currentUser?.let { user ->
-                                PharmacistMedicationsScreen(
-                                    onBack = { nav.popBackStack() }
-                                )
-                            }
-                        }
-                        composable(Routes.PharmacistConsultation) {
-                            currentUser?.let { user ->
-                                PharmacistConsultationScreen(
-                                    userProfile = user,
-                                    onAvailabilityChanged = { isOnline ->
-                                        currentUser = user.copy(online = isOnline)
-                                    },
-                                    onBack = { nav.popBackStack() }
-                                )
-                            }
-                        }
-                        composable(Routes.Profile) {
-                            ProfileScreen(
-                                onBack = { nav.popBackStack() },
-                                providedProfile = currentUser
+
+                        if (callUiState.status != com.example.pharmacy.sip.CallStatus.Idle) {
+                            CallScreen(
+                                state = callUiState,
+                                onHangUp = { SipManager.hangUpCurrentCall() },
+                                onToggleMute = { SipManager.toggleMute() },
+                                onToggleSpeaker = { SipManager.toggleSpeaker() }
                             )
                         }
-                        composable(Routes.Map) { MapScreen(onBack = { nav.popBackStack() }) }
                     }
                 }
             }

@@ -78,7 +78,7 @@ fun PatientCartScreen(
                                 scope.launch { cartRepo.removeItem(userId, item.medId) }
                             }
                         )
-                        Divider()
+                        androidx.compose.material3.HorizontalDivider()
                     }
                 }
                 Text("Total: $total EGP", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)

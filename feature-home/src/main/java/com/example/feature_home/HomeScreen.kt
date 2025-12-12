@@ -2,11 +2,13 @@ package com.example.feature_home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -37,25 +39,24 @@ fun PatientHomeScreen(
 ) {
     Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("Patient Home") }) }) { pad ->
         Column(
-            Modifier.padding(pad).padding(Spacing.lg).fillMaxWidth(),
+            Modifier
+                .padding(pad)
+                .padding(Spacing.lg)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             UserBanner(profile)
-            Button(onClick = onMedications, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Medications")
-            }
-            Button(onClick = onCart, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Cart")
-            }
-            Button(onClick = onConsultation, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Medical consultation")
-            }
-            OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Find pharmacies")
-            }
-            OutlinedButton(onClick = onProfile, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Profile")
-            }
+            ActionGrid(
+                primaryActions = listOf(
+                    "Medications" to onMedications,
+                    "Cart" to onCart,
+                    "Medical consultation" to onConsultation
+                ),
+                secondaryActions = listOf(
+                    "Find pharmacies" to onMap,
+                    "Profile" to onProfile
+                )
+            )
             TextButton(onClick = onLogout) { Text("Logout") }
         }
     }
@@ -73,22 +74,23 @@ fun PharmacistHomeScreen(
 ) {
     Scaffold(topBar = { CenterAlignedTopAppBar(title = { Text("Pharmacist Home") }) }) { pad ->
         Column(
-            Modifier.padding(pad).padding(Spacing.lg).fillMaxWidth(),
+            Modifier
+                .padding(pad)
+                .padding(Spacing.lg)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             UserBanner(profile)
-            Button(onClick = onManageMeds, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Manage medications")
-            }
-            Button(onClick = onConsultation, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Medical consultation")
-            }
-            OutlinedButton(onClick = onMap, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Find pharmacies")
-            }
-            OutlinedButton(onClick = onProfile, modifier = Modifier.fillMaxWidth().height(Dimens.buttonHeight)) {
-                Text("Profile")
-            }
+            ActionGrid(
+                primaryActions = listOf(
+                    "Manage medications" to onManageMeds,
+                    "Medical consultation" to onConsultation
+                ),
+                secondaryActions = listOf(
+                    "Find pharmacies" to onMap,
+                    "Profile" to onProfile
+                )
+            )
             TextButton(onClick = onLogout) { Text("Logout") }
         }
     }
@@ -106,6 +108,40 @@ private fun UserBanner(profile: UserProfile) {
             Text("Role: ${profile.role.ifBlank { "patient" }}", style = MaterialTheme.typography.bodyMedium)
             if (profile.gender.isNotBlank()) {
                 Text("Gender: ${profile.gender}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionGrid(
+    primaryActions: List<Pair<String, () -> Unit>>,
+    secondaryActions: List<Pair<String, () -> Unit>>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        primaryActions.forEach { (label, action) ->
+            Button(
+                onClick = action,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Dimens.buttonHeight),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) { Text(label) }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+        ) {
+            secondaryActions.forEach { (label, action) ->
+                OutlinedButton(
+                    onClick = action,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(Dimens.buttonHeight)
+                ) { Text(label) }
             }
         }
     }
