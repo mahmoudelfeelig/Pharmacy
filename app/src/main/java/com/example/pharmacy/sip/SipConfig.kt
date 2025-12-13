@@ -8,7 +8,7 @@ import org.linphone.core.TransportType
  */
 object SipConfig {
     // PBX IP or domain inside your lab (update if your Asterisk IP changes).
-    const val PBX_DOMAIN = "192.168.50.210"
+    const val PBX_DOMAIN = "172.20.10.6"
 
     // Default transport; change to Tcp or Tls if your PBX is configured accordingly.
     val DEFAULT_TRANSPORT = TransportType.Udp

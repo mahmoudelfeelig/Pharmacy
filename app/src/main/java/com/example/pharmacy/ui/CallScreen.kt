@@ -45,7 +45,8 @@ fun CallScreen(
     state: CallUiState,
     onHangUp: () -> Unit,
     onToggleMute: () -> Unit,
-    onToggleSpeaker: () -> Unit
+    onToggleSpeaker: () -> Unit,
+    onAnswer: () -> Unit
 ) {
     AnimatedVisibility(visible = state.status != CallStatus.Idle) {
         Surface(
@@ -83,6 +84,7 @@ fun CallScreen(
                         )
                         val statusLabel = when (state.status) {
                             CallStatus.Outgoing -> "Calling…"
+                            CallStatus.Incoming -> "Incoming call"
                             CallStatus.Connected -> "In call"
                             CallStatus.Idle -> ""
                         }
@@ -114,31 +116,56 @@ fun CallScreen(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CallIconButton(
-                            onClick = onToggleMute,
-                            icon = if (state.isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                            label = if (state.isMuted) "Unmute" else "Mute",
-                            active = state.isMuted
-                        )
-                        CallIconButton(
-                            onClick = onToggleSpeaker,
-                            icon = if (state.isSpeakerOn) Icons.Filled.VolumeUp else Icons.Outlined.VolumeOff,
-                            label = if (state.isSpeakerOn) "Speaker off" else "Speaker on",
-                            active = state.isSpeakerOn
-                        )
-                        CallIconButton(
-                            onClick = onHangUp,
-                            icon = Icons.Filled.CallEnd,
-                            label = "Hang up",
-                            active = true,
-                            tint = MaterialTheme.colorScheme.onError,
-                            background = MaterialTheme.colorScheme.error
-                        )
+                    if (state.status == CallStatus.Incoming) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CallIconButton(
+                                onClick = onAnswer,
+                                icon = Icons.Filled.CallEnd, // reuse icon slot; could swap to Call/Phone icon
+                                label = "Answer",
+                                active = true,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                background = MaterialTheme.colorScheme.tertiary
+                            )
+                            CallIconButton(
+                                onClick = onHangUp,
+                                icon = Icons.Filled.CallEnd,
+                                label = "Decline",
+                                active = true,
+                                tint = MaterialTheme.colorScheme.onError,
+                                background = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CallIconButton(
+                                onClick = onToggleMute,
+                                icon = if (state.isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                                label = if (state.isMuted) "Unmute" else "Mute",
+                                active = state.isMuted
+                            )
+                            CallIconButton(
+                                onClick = onToggleSpeaker,
+                                icon = if (state.isSpeakerOn) Icons.Filled.VolumeUp else Icons.Outlined.VolumeOff,
+                                label = if (state.isSpeakerOn) "Speaker off" else "Speaker on",
+                                active = state.isSpeakerOn
+                            )
+                            CallIconButton(
+                                onClick = onHangUp,
+                                icon = Icons.Filled.CallEnd,
+                                label = "Hang up",
+                                active = true,
+                                tint = MaterialTheme.colorScheme.onError,
+                                background = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }

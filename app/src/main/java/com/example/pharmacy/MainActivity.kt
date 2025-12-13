@@ -240,7 +240,8 @@ class MainActivity : ComponentActivity() {
                                 state = callUiState,
                                 onHangUp = { SipManager.hangUpCurrentCall() },
                                 onToggleMute = { SipManager.toggleMute() },
-                                onToggleSpeaker = { SipManager.toggleSpeaker() }
+                                onToggleSpeaker = { SipManager.toggleSpeaker() },
+                                onAnswer = { SipManager.answerCurrentCall() }
                             )
                         }
                     }

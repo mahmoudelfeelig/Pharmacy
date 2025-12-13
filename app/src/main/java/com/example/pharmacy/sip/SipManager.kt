@@ -70,6 +70,9 @@ object SipManager {
                 val remote = call.remoteAddress?.asStringUriOnly()
                 Log.i(TAG, "Call state changed for $remote -> $state ($message)")
                 when (state) {
+                    Call.State.IncomingReceived -> {
+                        updateCallState(call, CallStatus.Incoming)
+                    }
                     Call.State.OutgoingInit,
                     Call.State.OutgoingProgress,
                     Call.State.OutgoingRinging,
@@ -184,6 +187,12 @@ object SipManager {
         _callState.value = CallUiState(status = CallStatus.Idle)
     }
 
+    fun answerCurrentCall() {
+        val call = core?.currentCall ?: return
+        call.accept()
+        updateCallState(call, CallStatus.Connected)
+    }
+
     fun toggleMute() {
         val call = core?.currentCall ?: return
         call.microphoneMuted = !call.microphoneMuted
@@ -235,7 +244,7 @@ object SipManager {
     }
 }
 
-enum class CallStatus { Idle, Outgoing, Connected }
+enum class CallStatus { Idle, Outgoing, Incoming, Connected }
 
 data class CallUiState(
     val status: CallStatus = CallStatus.Idle,
